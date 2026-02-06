@@ -15,11 +15,20 @@ auto System::run() -> void {
 }
 
 auto System::runToSave() -> void {
+  // Enable coprocessor delayed sync if it is off - this is extremely important
+  // for coprocessor games, as many will not sync correctly for states when the
+  // option is off.
+  bool delay_sync_prev = configuration.hacks.coprocessor.delayedSync;
+  configuration.hacks.coprocessor.delayedSync = true;
+
   auto method = configuration.system.serialization.method;
 
   //these games will periodically deadlock when using "Fast" synchronization
   if(cartridge.headerTitle() == "Star Ocean") method = "Strict";
   if(cartridge.headerTitle() == "TALES OF PHANTASIA") method = "Strict";
+
+  //fast serialization corrupts the Super Game Boy implementation
+  if(cartridge.has.ICD) method = "Strict";
 
   //fallback in case of unrecognized method specified
   if(method != "Fast" && method != "Strict") method = "Fast";
@@ -30,6 +39,9 @@ auto System::runToSave() -> void {
 
   scheduler.mode = Scheduler::Mode::Run;
   scheduler.active = cpu.thread;
+
+  // Restore coprocessor delayed sync to whatever it was previous to the state save operation
+  configuration.hacks.coprocessor.delayedSync = delay_sync_prev;
 }
 
 auto System::runToSaveFast() -> void {
